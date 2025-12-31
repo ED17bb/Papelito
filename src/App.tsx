@@ -1,86 +1,91 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Users,
-  Timer,
-  Play,
-  CheckCircle,
-  RotateCcw,
-  Trophy,
-  ArrowRight,
-  X,
-  ChevronRight,
-  Shuffle,
-  MousePointer2,
-  ArrowLeft,
-} from 'lucide-react';
+import { Users, Timer, Play, CheckCircle, RotateCcw, Trophy, ArrowRight, X, ChevronRight, Shuffle, MousePointer2, ArrowLeft } from 'lucide-react';
 
 /* CONSTANTS & CONFIG */
 const ROUND_DURATION = 60; // seconds
 
-/* ESTILOS DE PAPEL DE CUADERNO (CSS-in-JS simulado con Tailwind) */
-const NOTEBOOK_PAPER_CLASS =
-  'bg-white border-l-4 border-l-red-400 shadow-md relative overflow-hidden';
-const NOTEBOOK_LINES_STYLE = {
+/* TYPES (Definiciones para TypeScript) */
+interface Player {
+  id: number;
+  name: string;
+  papelitos: string[];
+}
+
+interface Card {
+  id: string;
+  text: string;
+  author: string;
+}
+
+interface Team {
+  id: number;
+  name: string;
+  members: Player[];
+  score: number;
+  nextDescriberIndex: number;
+}
+
+/* ESTILOS DE PAPEL DE CUADERNO */
+const NOTEBOOK_PAPER_CLASS = "bg-white border-l-4 border-l-red-400 shadow-md relative overflow-hidden";
+const NOTEBOOK_LINES_STYLE: React.CSSProperties = {
   backgroundImage: 'linear-gradient(#e5e7eb 1px, transparent 1px)',
   backgroundSize: '100% 2rem',
   lineHeight: '2rem',
-  paddingTop: '0.2rem',
+  paddingTop: '0.2rem'
 };
 
 /* MAIN COMPONENT */
 export default function App() {
   // --- STATE MANAGEMENT ---
-
-  // Fases: 'setup_players', 'choose_team_mode', 'manual_team_setup', 'setup_teams', 'pre_round', 'playing', 'round_summary', 'game_over'
-  const [phase, setPhase] = useState('setup_players');
-
-  // Data
-  const [players, setPlayers] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [allPapelitos, setAllPapelitos] = useState([]);
-  const [deck, setDeck] = useState([]);
-
+  
+  const [phase, setPhase] = useState<string>('setup_players');
+  
+  // Data Types Defined
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [allPapelitos, setAllPapelitos] = useState<Card[]>([]); 
+  const [deck, setDeck] = useState<Card[]>([]); 
+  
   // Input Temp State
-  const [tempPlayerName, setTempPlayerName] = useState('');
-  const [tempPapelitos, setTempPapelitos] = useState(['', '', '']);
-  const [papelitoStep, setPapelitoStep] = useState(0);
-
+  const [tempPlayerName, setTempPlayerName] = useState<string>('');
+  const [tempPapelitos, setTempPapelitos] = useState<string[]>(['', '', '']);
+  const [papelitoStep, setPapelitoStep] = useState<number>(0); 
+  
   // Manual Team Setup State
-  const [unassignedPlayers, setUnassignedPlayers] = useState([]);
-  const [manualTeams, setManualTeams] = useState([]);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(null); // Para el UX de "Tap to move"
+  const [unassignedPlayers, setUnassignedPlayers] = useState<Player[]>([]);
+  const [manualTeams, setManualTeams] = useState<Team[]>([]);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
 
   // Gameplay State
-  const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(ROUND_DURATION);
-  const [currentCard, setCurrentCard] = useState(null);
-  const [isCardFolded, setIsCardFolded] = useState(true);
-  const [turnScore, setTurnScore] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const timerRef = useRef(null);
+  const [currentTeamIndex, setCurrentTeamIndex] = useState<number>(0);
+  const [timeLeft, setTimeLeft] = useState<number>(ROUND_DURATION);
+  const [currentCard, setCurrentCard] = useState<Card | null>(null);
+  const [isCardFolded, setIsCardFolded] = useState<boolean>(true);
+  const [turnScore, setTurnScore] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  
+  const timerRef = useRef<any>(null);
 
   // --- HELPER FUNCTIONS ---
 
-  const shuffleArray = (array) => {
-    let currentIndex = array.length,
-      randomIndex;
+  // Generic shuffle function to fix "any" type error
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    let currentIndex = array.length, randomIndex;
     while (currentIndex !== 0) {
       randomIndex = Math.floor(Math.random() * currentIndex);
       currentIndex--;
-      [array[currentIndex], array[randomIndex]] = [
-        array[randomIndex],
-        array[currentIndex],
-      ];
+      [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
     }
     return array;
   };
 
   const playAlarmSound = () => {
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      // Fix for TypeScript not knowing about webkitAudioContext
+      const win = window as any;
+      const AudioContext = win.AudioContext || win.webkitAudioContext;
       if (!AudioContext) return;
-
+      
       const ctx = new AudioContext();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -98,7 +103,7 @@ export default function App() {
       osc.start();
       osc.stop(ctx.currentTime + 0.6);
     } catch (e) {
-      console.error('Audio error', e);
+      console.error("Audio error", e);
     }
   };
 
@@ -113,17 +118,17 @@ export default function App() {
       if (!currentPaperVal.trim()) return;
 
       if (papelitoStep === 3) {
-        const newPlayer = {
+        const newPlayer: Player = {
           id: Date.now(),
           name: tempPlayerName,
-          papelitos: [...tempPapelitos],
+          papelitos: [...tempPapelitos]
         };
         setPlayers([...players, newPlayer]);
-
-        const papersWithId = tempPapelitos.map((text) => ({
-          id: Math.random().toString(36).substr(2, 9),
-          text,
-          author: tempPlayerName,
+        
+        const papersWithId: Card[] = tempPapelitos.map(text => ({ 
+          id: Math.random().toString(36).substr(2, 9), 
+          text, 
+          author: tempPlayerName 
         }));
         setAllPapelitos([...allPapelitos, ...papersWithId]);
 
@@ -136,25 +141,25 @@ export default function App() {
     }
   };
 
-  const updateTempPapelito = (val) => {
+  const updateTempPapelito = (val: string) => {
     const newPapers = [...tempPapelitos];
     newPapers[papelitoStep - 1] = val;
     setTempPapelitos(newPapers);
   };
 
-  const removePlayer = (id) => {
-    const playerToRemove = players.find((p) => p.id === id);
-    setPlayers(players.filter((p) => p.id !== id));
-    setAllPapelitos(
-      allPapelitos.filter((p) => p.author !== playerToRemove.name)
-    );
+  const removePlayer = (id: number) => {
+    const playerToRemove = players.find(p => p.id === id);
+    if (!playerToRemove) return; // TypeScript safety check
+    
+    setPlayers(players.filter(p => p.id !== id));
+    setAllPapelitos(allPapelitos.filter(p => p.author !== playerToRemove.name));
   };
 
   // --- TEAM GENERATION LOGIC ---
 
   const goToTeamModeSelection = () => {
     if (players.length < 2) {
-      alert('Se necesitan al menos 2 jugadores.');
+      alert("Se necesitan al menos 2 jugadores.");
       return;
     }
     setPhase('choose_team_mode');
@@ -162,7 +167,7 @@ export default function App() {
 
   const generateRandomTeams = () => {
     const shuffledPlayers = shuffleArray([...players]);
-    const generatedTeams = [];
+    const generatedTeams: Team[] = [];
     const numTeams = Math.ceil(players.length / 2);
 
     for (let i = 0; i < numTeams; i++) {
@@ -171,7 +176,7 @@ export default function App() {
         name: `Equipo ${i + 1}`,
         members: [],
         score: 0,
-        nextDescriberIndex: 0,
+        nextDescriberIndex: 0
       });
     }
 
@@ -186,14 +191,14 @@ export default function App() {
 
   const initManualTeams = () => {
     const numTeams = Math.ceil(players.length / 2);
-    const initialTeams = [];
+    const initialTeams: Team[] = [];
     for (let i = 0; i < numTeams; i++) {
       initialTeams.push({
         id: i,
         name: `Equipo ${i + 1}`,
-        members: [], // Empty initially
+        members: [], 
         score: 0,
-        nextDescriberIndex: 0,
+        nextDescriberIndex: 0
       });
     }
     setManualTeams(initialTeams);
@@ -203,81 +208,72 @@ export default function App() {
   };
 
   // Manual Drag & Drop (Tap & Move) Logic
-  const handlePlayerTap = (player) => {
+  const handlePlayerTap = (player: Player) => {
     if (selectedPlayerId === player.id) {
-      setSelectedPlayerId(null); // Deselect
+        setSelectedPlayerId(null); 
     } else {
-      setSelectedPlayerId(player.id);
+        setSelectedPlayerId(player.id);
     }
   };
 
-  const assignPlayerToTeam = (teamId) => {
+  const assignPlayerToTeam = (teamId: number) => {
     if (!selectedPlayerId) return;
 
     // Find player in unassigned
-    const player = unassignedPlayers.find((p) => p.id === selectedPlayerId);
+    const player = unassignedPlayers.find(p => p.id === selectedPlayerId);
     if (player) {
-      // Remove from unassigned
-      setUnassignedPlayers(
-        unassignedPlayers.filter((p) => p.id !== selectedPlayerId)
-      );
-      // Add to team
-      setManualTeams(
-        manualTeams.map((t) => {
-          if (t.id === teamId) {
-            return { ...t, members: [...t.members, player] };
-          }
-          return t;
-        })
-      );
-      setSelectedPlayerId(null);
-    } else {
-      // Maybe player is already in another team? Logic to move between teams could be added here
-      // For simplicity: Move from team A to Team B logic
-      let playerFoundInTeam = null;
-      let sourceTeamId = null;
-
-      manualTeams.forEach((t) => {
-        const found = t.members.find((p) => p.id === selectedPlayerId);
-        if (found) {
-          playerFoundInTeam = found;
-          sourceTeamId = t.id;
-        }
-      });
-
-      if (playerFoundInTeam && sourceTeamId !== teamId) {
-        // Remove from source
-        const newTeams = manualTeams.map((t) => {
-          if (t.id === sourceTeamId) {
-            return {
-              ...t,
-              members: t.members.filter((p) => p.id !== selectedPlayerId),
-            };
-          }
-          return t;
-        });
-        // Add to target
-        const finalTeams = newTeams.map((t) => {
-          if (t.id === teamId) {
-            return { ...t, members: [...t.members, playerFoundInTeam] };
-          }
-          return t;
-        });
-        setManualTeams(finalTeams);
+        // Remove from unassigned
+        setUnassignedPlayers(unassignedPlayers.filter(p => p.id !== selectedPlayerId));
+        // Add to team
+        setManualTeams(manualTeams.map(t => {
+            if (t.id === teamId) {
+                return { ...t, members: [...t.members, player] };
+            }
+            return t;
+        }));
         setSelectedPlayerId(null);
-      }
+    } else {
+        // Logic to move between teams
+        let playerFoundInTeam: Player | undefined;
+        let sourceTeamId: number | undefined;
+
+        manualTeams.forEach(t => {
+            const found = t.members.find(p => p.id === selectedPlayerId);
+            if (found) {
+                playerFoundInTeam = found;
+                sourceTeamId = t.id;
+            }
+        });
+
+        if (playerFoundInTeam && sourceTeamId !== undefined && sourceTeamId !== teamId) {
+            // Remove from source
+            const newTeams = manualTeams.map(t => {
+                if (t.id === sourceTeamId) {
+                    return { ...t, members: t.members.filter(p => p.id !== selectedPlayerId) };
+                }
+                return t;
+            });
+            // Add to target
+            const finalTeams = newTeams.map(t => {
+                if (t.id === teamId) {
+                    return { ...t, members: [...t.members, playerFoundInTeam!] };
+                }
+                return t;
+            });
+            setManualTeams(finalTeams);
+            setSelectedPlayerId(null);
+        }
     }
   };
 
-  const returnPlayerToBench = (player) => {
-    // Remove from whichever team they are in
-    const newTeams = manualTeams.map((t) => ({
-      ...t,
-      members: t.members.filter((p) => p.id !== player.id),
+  const returnPlayerToBench = (player: Player) => {
+    const newTeams = manualTeams.map(t => ({
+        ...t,
+        members: t.members.filter(p => p.id !== player.id)
     }));
     setManualTeams(newTeams);
     setUnassignedPlayers([...unassignedPlayers, player]);
-    setSelectedPlayerId(null); // Reset selection
+    setSelectedPlayerId(null);
   };
 
   const saveManualTeams = () => {
@@ -287,10 +283,8 @@ export default function App() {
 
   // --- GAME ACTIONS ---
 
-  const updateTeamName = (teamId, newName) => {
-    const updatedTeams = teams.map((t) =>
-      t.id === teamId ? { ...t, name: newName } : t
-    );
+  const updateTeamName = (teamId: number, newName: string) => {
+    const updatedTeams = teams.map(t => t.id === teamId ? { ...t, name: newName } : t);
     setTeams(updatedTeams);
   };
 
@@ -320,9 +314,11 @@ export default function App() {
 
   const handleCorrectGuess = () => {
     const updatedTeams = [...teams];
-    updatedTeams[currentTeamIndex].score += 1;
-    setTeams(updatedTeams);
-    setTurnScore((prev) => prev + 1);
+    if (updatedTeams[currentTeamIndex]) {
+        updatedTeams[currentTeamIndex].score += 1;
+        setTeams(updatedTeams);
+    }
+    setTurnScore(prev => prev + 1);
 
     const newDeck = deck.slice(1);
     setDeck(newDeck);
@@ -336,7 +332,7 @@ export default function App() {
   };
 
   const tick = () => {
-    setTimeLeft((prev) => {
+    setTimeLeft(prev => {
       if (prev <= 1) {
         playAlarmSound();
         endRound();
@@ -350,11 +346,13 @@ export default function App() {
     if (isPlaying) {
       timerRef.current = setInterval(tick, 1000);
     }
-    return () => clearInterval(timerRef.current);
+    return () => {
+        if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [isPlaying]);
 
   const endRound = () => {
-    clearInterval(timerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
     setIsPlaying(false);
     setPhase('round_summary');
   };
@@ -362,15 +360,16 @@ export default function App() {
   const nextTeamTurn = () => {
     const updatedTeams = [...teams];
     const currentTeam = updatedTeams[currentTeamIndex];
-    currentTeam.nextDescriberIndex =
-      (currentTeam.nextDescriberIndex + 1) % currentTeam.members.length;
-    setTeams(updatedTeams);
+    if (currentTeam) {
+        currentTeam.nextDescriberIndex = (currentTeam.nextDescriberIndex + 1) % currentTeam.members.length;
+        setTeams(updatedTeams);
+    }
     setCurrentTeamIndex((currentTeamIndex + 1) % teams.length);
     setPhase('pre_round');
   };
 
   const endGame = () => {
-    clearInterval(timerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
     setIsPlaying(false);
     setPhase('game_over');
   };
@@ -387,23 +386,24 @@ export default function App() {
     setUnassignedPlayers([]);
   };
 
-  const getCurrentTeam = () => teams[currentTeamIndex];
-
+  const getCurrentTeam = () => teams[currentTeamIndex] || { name: 'Cargando...', members: [], score: 0 };
+  
   const getDescriber = () => {
     const team = getCurrentTeam();
-    if (!team.members || team.members.length === 0) return { name: 'Nadie' };
-    return team.members[team.nextDescriberIndex];
+    if (!team.members || team.members.length === 0) return { name: "Nadie" };
+    return team.members[team.nextDescriberIndex] || { name: 'Nadie' };
   };
 
   const getGuesser = () => {
     const team = getCurrentTeam();
-    if (!team.members || team.members.length < 2) return 'El equipo';
+    if (!team.members || team.members.length < 2) return "El equipo";
     if (team.members.length === 2) {
       const guesserIndex = (team.nextDescriberIndex + 1) % 2;
-      return team.members[guesserIndex].name;
+      return team.members[guesserIndex]?.name || "Compañero";
     }
-    return 'El resto del equipo';
+    return "El resto del equipo";
   };
+
 
   // --- VISTAS ---
 
@@ -412,128 +412,92 @@ export default function App() {
     return (
       <div className="min-h-screen bg-green-900 flex flex-col items-center font-sans p-4 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
-
-        <h1 className="text-4xl font-black mb-2 text-white/90 tracking-tighter mt-4 font-mono">
-          Papelito
-        </h1>
-        <p className="text-green-200 mb-6 font-handwriting">
-          ¡Escribe clarito para que te entiendan!
-        </p>
+        
+        <h1 className="text-4xl font-black mb-2 text-white/90 tracking-tighter mt-4 font-mono">Papelito</h1>
+        <p className="text-green-200 mb-6 font-handwriting">¡Escribe clarito para que te entiendan!</p>
 
         <div className="w-full max-w-md bg-yellow-600 rounded-lg p-1 shadow-2xl rotate-1">
-          <div className="bg-white rounded-md p-6 min-h-[400px] flex flex-col relative shadow-inner">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-4 flex gap-4">
-              <div className="w-4 h-8 bg-gray-400 rounded-full shadow-md"></div>
-              <div className="w-4 h-8 bg-gray-400 rounded-full shadow-md"></div>
-            </div>
-
-            <div className="mt-4 mb-6">
-              <h2 className="text-xl font-bold text-gray-800 text-center uppercase tracking-widest border-b-2 border-gray-200 pb-2">
-                {papelitoStep === 0 ? 'Registro' : `Papelito #${papelitoStep}`}
-              </h2>
-              <div className="flex justify-center gap-2 mt-2">
-                {[0, 1, 2, 3].map((step) => (
-                  <div
-                    key={step}
-                    className={`h-2 w-8 rounded-full ${
-                      papelitoStep >= step ? 'bg-blue-500' : 'bg-gray-200'
-                    }`}
-                  ></div>
-                ))}
+           <div className="bg-white rounded-md p-6 min-h-[400px] flex flex-col relative shadow-inner">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-4 flex gap-4">
+                  <div className="w-4 h-8 bg-gray-400 rounded-full shadow-md"></div>
+                  <div className="w-4 h-8 bg-gray-400 rounded-full shadow-md"></div>
               </div>
-            </div>
 
-            <div className="flex-1 flex flex-col justify-center">
-              {papelitoStep === 0 ? (
-                <div className="transform -rotate-1">
-                  <label className="block text-sm font-bold text-gray-500 mb-1 ml-2">
-                    Nombre del alumno:
-                  </label>
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Tu Nombre"
-                    className={`w-full text-2xl p-4 font-serif text-blue-900 placeholder-blue-300 outline-none ${NOTEBOOK_PAPER_CLASS}`}
-                    style={NOTEBOOK_LINES_STYLE}
-                    value={tempPlayerName}
-                    onChange={(e) => setTempPlayerName(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === 'Enter' && handleNextInputStep()
-                    }
-                  />
+              <div className="mt-4 mb-6">
+                <h2 className="text-xl font-bold text-gray-800 text-center uppercase tracking-widest border-b-2 border-gray-200 pb-2">
+                  {papelitoStep === 0 ? "Registro" : `Papelito #${papelitoStep}`}
+                </h2>
+                <div className="flex justify-center gap-2 mt-2">
+                    {[0,1,2,3].map(step => (
+                        <div key={step} className={`h-2 w-8 rounded-full ${papelitoStep >= step ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+                    ))}
                 </div>
-              ) : (
-                <div className="transform rotate-1">
-                  <label className="block text-sm font-bold text-gray-500 mb-1 ml-2">
-                    Escribe tu palabra secreta:
-                  </label>
-                  <div
-                    className={`w-full h-32 p-0 ${NOTEBOOK_PAPER_CLASS} shadow-lg`}
-                  >
-                    <textarea
-                      autoFocus
-                      placeholder="..."
-                      className="w-full h-full bg-transparent resize-none text-2xl font-serif text-gray-800 outline-none px-4"
-                      style={NOTEBOOK_LINES_STYLE}
-                      value={tempPapelitos[papelitoStep - 1]}
-                      onChange={(e) => updateTempPapelito(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleNextInputStep();
-                        }
-                      }}
-                    />
+              </div>
+              
+              <div className="flex-1 flex flex-col justify-center">
+                {papelitoStep === 0 ? (
+                  <div className="transform -rotate-1">
+                      <label className="block text-sm font-bold text-gray-500 mb-1 ml-2">Nombre del alumno:</label>
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Tu Nombre"
+                        className={`w-full text-2xl p-4 font-serif text-blue-900 placeholder-blue-300 outline-none ${NOTEBOOK_PAPER_CLASS}`}
+                        style={NOTEBOOK_LINES_STYLE}
+                        value={tempPlayerName}
+                        onChange={(e) => setTempPlayerName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleNextInputStep()}
+                      />
                   </div>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="transform rotate-1">
+                      <label className="block text-sm font-bold text-gray-500 mb-1 ml-2">Escribe tu palabra secreta:</label>
+                      <div className={`w-full h-32 p-0 ${NOTEBOOK_PAPER_CLASS} shadow-lg`}>
+                        <textarea
+                            autoFocus
+                            placeholder="..."
+                            className="w-full h-full bg-transparent resize-none text-2xl font-serif text-gray-800 outline-none px-4"
+                            style={NOTEBOOK_LINES_STYLE}
+                            value={tempPapelitos[papelitoStep - 1]}
+                            onChange={(e) => updateTempPapelito(e.target.value)}
+                            onKeyDown={(e) => {
+                                if(e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleNextInputStep();
+                                }
+                            }}
+                        />
+                      </div>
+                  </div>
+                )}
+              </div>
 
-            <button
-              onClick={handleNextInputStep}
-              disabled={
-                papelitoStep === 0
-                  ? !tempPlayerName.trim()
-                  : !tempPapelitos[papelitoStep - 1].trim()
-              }
-              className="mt-6 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              {papelitoStep === 3 ? 'Guardar en la Bolsa' : 'Siguiente'}{' '}
-              <ChevronRight />
-            </button>
-          </div>
+              <button 
+                onClick={handleNextInputStep}
+                disabled={papelitoStep === 0 ? !tempPlayerName.trim() : !tempPapelitos[papelitoStep-1].trim()}
+                className="mt-6 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                {papelitoStep === 3 ? "Guardar en la Bolsa" : "Siguiente"} <ChevronRight />
+              </button>
+           </div>
         </div>
 
         <div className="mt-8 w-full max-w-md bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-white font-bold flex items-center gap-2">
-              <Users size={18} /> Lista de jugadores ({players.length})
-            </h3>
+            <h3 className="text-white font-bold flex items-center gap-2"><Users size={18}/> Lista de jugadores ({players.length})</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            {players.map((p) => (
-              <span
-                key={p.id}
-                className="bg-white text-green-900 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm"
-              >
+            {players.map(p => (
+              <span key={p.id} className="bg-white text-green-900 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm">
                 {p.name}
-                <button
-                  onClick={() => removePlayer(p.id)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <X size={14} />
-                </button>
+                <button onClick={() => removePlayer(p.id)} className="text-red-500 hover:text-red-700"><X size={14}/></button>
               </span>
             ))}
-            {players.length === 0 && (
-              <span className="text-green-300 italic text-sm">
-                Nadie registrado aún...
-              </span>
-            )}
+            {players.length === 0 && <span className="text-green-300 italic text-sm">Nadie registrado aún...</span>}
           </div>
 
           {players.length >= 2 && (
-            <button
+            <button 
               onClick={goToTeamModeSelection}
               className="mt-4 w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 rounded-lg shadow-lg flex justify-center items-center gap-2"
             >
@@ -548,147 +512,126 @@ export default function App() {
   /* VISTA INTERMEDIA: ELEGIR MODO DE EQUIPOS */
   if (phase === 'choose_team_mode') {
     return (
-      <div className="min-h-screen bg-green-900 p-6 flex flex-col justify-center items-center text-white font-sans relative">
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
+        <div className="min-h-screen bg-green-900 p-6 flex flex-col justify-center items-center text-white font-sans relative">
+            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
+            
+            <h2 className="text-3xl font-black mb-12 text-center">¿Cómo armamos los equipos?</h2>
 
-        <h2 className="text-3xl font-black mb-12 text-center">
-          ¿Cómo armamos los equipos?
-        </h2>
+            <div className="w-full max-w-sm space-y-6 z-10">
+                <button 
+                    onClick={generateRandomTeams}
+                    className="w-full bg-purple-600 hover:bg-purple-700 p-6 rounded-2xl shadow-xl flex flex-col items-center gap-2 transform transition hover:scale-105"
+                >
+                    <Shuffle size={48} className="text-white mb-2" />
+                    <span className="text-2xl font-bold">Armar al Azar</span>
+                    <span className="text-purple-200 text-sm">El destino decide las parejas</span>
+                </button>
 
-        <div className="w-full max-w-sm space-y-6 z-10">
-          <button
-            onClick={generateRandomTeams}
-            className="w-full bg-purple-600 hover:bg-purple-700 p-6 rounded-2xl shadow-xl flex flex-col items-center gap-2 transform transition hover:scale-105"
-          >
-            <Shuffle size={48} className="text-white mb-2" />
-            <span className="text-2xl font-bold">Armar al Azar</span>
-            <span className="text-purple-200 text-sm">
-              El destino decide las parejas
-            </span>
-          </button>
+                <button 
+                    onClick={initManualTeams}
+                    className="w-full bg-blue-600 hover:bg-blue-700 p-6 rounded-2xl shadow-xl flex flex-col items-center gap-2 transform transition hover:scale-105"
+                >
+                    <MousePointer2 size={48} className="text-white mb-2" />
+                    <span className="text-2xl font-bold">Elegir Nosotros</span>
+                    <span className="text-blue-200 text-sm">Arrastra a tus compañeros</span>
+                </button>
 
-          <button
-            onClick={initManualTeams}
-            className="w-full bg-blue-600 hover:bg-blue-700 p-6 rounded-2xl shadow-xl flex flex-col items-center gap-2 transform transition hover:scale-105"
-          >
-            <MousePointer2 size={48} className="text-white mb-2" />
-            <span className="text-2xl font-bold">Elegir Nosotros</span>
-            <span className="text-blue-200 text-sm">
-              Arrastra a tus compañeros
-            </span>
-          </button>
-
-          <button
-            onClick={() => setPhase('setup_players')}
-            className="w-full text-green-200 hover:text-white mt-4 font-bold flex justify-center items-center gap-2"
-          >
-            <ArrowLeft size={20} /> Volver
-          </button>
+                <button 
+                    onClick={() => setPhase('setup_players')}
+                    className="w-full text-green-200 hover:text-white mt-4 font-bold flex justify-center items-center gap-2"
+                >
+                    <ArrowLeft size={20} /> Volver
+                </button>
+            </div>
         </div>
-      </div>
     );
   }
 
   /* VISTA: SETUP MANUAL DE EQUIPOS (DRAG & DROP SIMULADO PARA MOVIL) */
   if (phase === 'manual_team_setup') {
     return (
-      <div className="min-h-screen bg-green-900 p-4 flex flex-col items-center font-sans relative overflow-y-auto">
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
+        <div className="min-h-screen bg-green-900 p-4 flex flex-col items-center font-sans relative overflow-y-auto">
+            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
+            
+            <div className="w-full max-w-lg z-10">
+                <h3 className="text-xl text-green-200 font-bold mb-4 text-center">
+                    {selectedPlayerId 
+                        ? "Ahora toca el equipo destino 👇" 
+                        : "Toca un jugador para moverlo 👆"}
+                </h3>
 
-        <div className="w-full max-w-lg z-10">
-          <h3 className="text-xl text-green-200 font-bold mb-4 text-center">
-            {selectedPlayerId
-              ? 'Ahora toca el equipo destino 👇'
-              : 'Toca un jugador para moverlo 👆'}
-          </h3>
-
-          {/* BANCA / LISTA DE ESPERA */}
-          <div className="bg-black/30 p-4 rounded-xl border border-white/10 mb-6 min-h-[100px]">
-            <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">
-              Lista de Espera ({unassignedPlayers.length})
-            </h4>
-            <div className="flex flex-wrap gap-3">
-              {unassignedPlayers.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => handlePlayerTap(p)}
-                  className={`px-4 py-2 rounded-full font-bold text-sm shadow-sm transition-all flex items-center gap-2 ${
-                    selectedPlayerId === p.id
-                      ? 'bg-yellow-400 text-yellow-900 ring-4 ring-yellow-200 scale-110'
-                      : 'bg-white text-gray-800 hover:bg-gray-100'
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
-              {unassignedPlayers.length === 0 && (
-                <span className="text-gray-500 italic text-sm w-full text-center py-2">
-                  ¡Todos asignados!
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* CASILLAS DE EQUIPOS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-24">
-            {manualTeams.map((team) => (
-              <div
-                key={team.id}
-                onClick={() => assignPlayerToTeam(team.id)}
-                className={`p-4 rounded-lg border-2 transition-colors relative cursor-pointer min-h-[120px] flex flex-col ${
-                  selectedPlayerId
-                    ? 'bg-blue-900/40 border-yellow-400 border-dashed animate-pulse'
-                    : 'bg-white/10 border-white/20'
-                }`}
-              >
-                <span className="text-green-300 font-bold mb-2 block">
-                  {team.name}
-                </span>
-                <div className="flex flex-wrap gap-2 flex-1 items-start content-start">
-                  {team.members.map((m) => (
-                    <span
-                      key={m.id}
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent assigning to team when clicking remove
-                        returnPlayerToBench(m);
-                      }}
-                      className={`px-2 py-1 bg-indigo-600 text-white text-xs rounded shadow flex items-center gap-1 ${
-                        selectedPlayerId === m.id
-                          ? 'ring-2 ring-yellow-400'
-                          : ''
-                      }`}
-                    >
-                      {m.name}
-                      {/* Allow selecting from inside team too if we want to move them? */}
-                      <X
-                        size={12}
-                        className="opacity-50 hover:opacity-100 cursor-pointer"
-                      />
-                    </span>
-                  ))}
-                  {team.members.length === 0 && !selectedPlayerId && (
-                    <span className="text-white/20 text-xs italic">Vacío</span>
-                  )}
+                {/* BANCA / LISTA DE ESPERA */}
+                <div className="bg-black/30 p-4 rounded-xl border border-white/10 mb-6 min-h-[100px]">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Lista de Espera ({unassignedPlayers.length})</h4>
+                    <div className="flex flex-wrap gap-3">
+                        {unassignedPlayers.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => handlePlayerTap(p)}
+                                className={`px-4 py-2 rounded-full font-bold text-sm shadow-sm transition-all flex items-center gap-2 ${
+                                    selectedPlayerId === p.id 
+                                    ? 'bg-yellow-400 text-yellow-900 ring-4 ring-yellow-200 scale-110' 
+                                    : 'bg-white text-gray-800 hover:bg-gray-100'
+                                }`}
+                            >
+                                {p.name}
+                            </button>
+                        ))}
+                        {unassignedPlayers.length === 0 && (
+                            <span className="text-gray-500 italic text-sm w-full text-center py-2">¡Todos asignados!</span>
+                        )}
+                    </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* BOTÓN FIJO ABAJO */}
-        <div className="fixed bottom-0 left-0 w-full p-4 bg-green-900/90 backdrop-blur border-t border-green-800 z-50 flex justify-center">
-          <button
-            disabled={unassignedPlayers.length > 0}
-            onClick={saveManualTeams}
-            className="w-full max-w-md bg-green-500 hover:bg-green-400 disabled:bg-gray-600 disabled:text-gray-400 text-white font-extrabold py-4 rounded-xl shadow-lg text-lg flex justify-center items-center gap-2 transition-all"
-          >
-            {unassignedPlayers.length > 0
-              ? `Faltan asignar ${unassignedPlayers.length}`
-              : 'Confirmar Equipos'}{' '}
-            <CheckCircle size={20} />
-          </button>
+                {/* CASILLAS DE EQUIPOS */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-24">
+                    {manualTeams.map(team => (
+                        <div 
+                            key={team.id}
+                            onClick={() => assignPlayerToTeam(team.id)}
+                            className={`p-4 rounded-lg border-2 transition-colors relative cursor-pointer min-h-[120px] flex flex-col ${
+                                selectedPlayerId 
+                                ? 'bg-blue-900/40 border-yellow-400 border-dashed animate-pulse' 
+                                : 'bg-white/10 border-white/20'
+                            }`}
+                        >
+                            <span className="text-green-300 font-bold mb-2 block">{team.name}</span>
+                            <div className="flex flex-wrap gap-2 flex-1 items-start content-start">
+                                {team.members.map(m => (
+                                    <span 
+                                        key={m.id}
+                                        onClick={(e) => {
+                                            e.stopPropagation(); 
+                                            returnPlayerToBench(m);
+                                        }}
+                                        className={`px-2 py-1 bg-indigo-600 text-white text-xs rounded shadow flex items-center gap-1 ${
+                                            selectedPlayerId === m.id ? 'ring-2 ring-yellow-400' : ''
+                                        }`}
+                                    >
+                                        {m.name} 
+                                        <X size={12} className="opacity-50 hover:opacity-100 cursor-pointer" />
+                                    </span>
+                                ))}
+                                {team.members.length === 0 && !selectedPlayerId && (
+                                    <span className="text-white/20 text-xs italic">Vacío</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* BOTÓN FIJO ABAJO */}
+            <div className="fixed bottom-0 left-0 w-full p-4 bg-green-900/90 backdrop-blur border-t border-green-800 z-50 flex justify-center">
+                <button
+                    disabled={unassignedPlayers.length > 0}
+                    onClick={saveManualTeams}
+                    className="w-full max-w-md bg-green-500 hover:bg-green-400 disabled:bg-gray-600 disabled:text-gray-400 text-white font-extrabold py-4 rounded-xl shadow-lg text-lg flex justify-center items-center gap-2 transition-all"
+                >
+                    {unassignedPlayers.length > 0 ? `Faltan asignar ${unassignedPlayers.length}` : "Confirmar Equipos"} <CheckCircle size={20} />
+                </button>
+            </div>
         </div>
-      </div>
     );
   }
 
@@ -696,33 +639,23 @@ export default function App() {
   if (phase === 'setup_teams') {
     return (
       <div className="min-h-screen bg-green-900 p-6 flex flex-col items-center text-white font-sans relative">
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
-        <h2 className="text-3xl font-black mb-6 text-yellow-400 underline decoration-wavy decoration-white/30">
-          Equipos Listos
-        </h2>
-        <p className="text-green-200 mb-4 text-sm">
-          Puedes cambiar los nombres si quieres
-        </p>
-
+         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
+        <h2 className="text-3xl font-black mb-6 text-yellow-400 underline decoration-wavy decoration-white/30">Equipos Listos</h2>
+        <p className="text-green-200 mb-4 text-sm">Puedes cambiar los nombres si quieres</p>
+        
         <div className="w-full max-w-md space-y-6 mb-8 z-10">
           {teams.map((team) => (
-            <div
-              key={team.id}
-              className="bg-white/95 text-gray-800 p-4 rounded-sm shadow-xl transform rotate-1 hover:rotate-0 transition-transform relative"
-            >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-yellow-200/80 transform -rotate-2 shadow-sm"></div>
-
-              <input
-                value={team.name}
-                onChange={(e) => updateTeamName(team.id, e.target.value)}
-                className="bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none text-xl font-bold w-full mb-2 font-serif text-blue-900"
-              />
+            <div key={team.id} className="bg-white/95 text-gray-800 p-4 rounded-sm shadow-xl transform rotate-1 hover:rotate-0 transition-transform relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-yellow-200/80 transform -rotate-2 shadow-sm"></div>
+                
+              <input 
+                  value={team.name}
+                  onChange={(e) => updateTeamName(team.id, e.target.value)}
+                  className="bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none text-xl font-bold w-full mb-2 font-serif text-blue-900"
+                />
               <div className="flex flex-wrap gap-2">
-                {team.members.map((m) => (
-                  <span
-                    key={m.id}
-                    className="text-gray-600 font-handwriting text-lg"
-                  >
+                {team.members.map(m => (
+                  <span key={m.id} className="text-gray-600 font-handwriting text-lg">
                     {m.name} •
                   </span>
                 ))}
@@ -731,7 +664,7 @@ export default function App() {
           ))}
         </div>
 
-        <button
+        <button 
           onClick={startGame}
           className="z-10 w-full max-w-md bg-green-600 hover:bg-green-500 text-white font-extrabold py-4 rounded-xl shadow-2xl border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all text-xl flex justify-center items-center gap-2"
         >
@@ -750,47 +683,35 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gray-800 flex flex-col justify-center items-center p-6 text-center text-white font-sans">
         <div className="bg-green-900 p-8 rounded-xl shadow-2xl max-w-md w-full border-4 border-wood-800 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle,white_1px,transparent_1px)] bg-[length:20px_20px]"></div>
-
-          <h3 className="text-green-300 uppercase tracking-widest text-sm font-bold mb-4 relative z-10">
-            Siguiente Turno
-          </h3>
-          <h1 className="text-5xl font-black text-white mb-8 relative z-10 drop-shadow-md">
-            {team.name}
-          </h1>
-
+            <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle,white_1px,transparent_1px)] bg-[length:20px_20px]"></div>
+          
+          <h3 className="text-green-300 uppercase tracking-widest text-sm font-bold mb-4 relative z-10">Siguiente Turno</h3>
+          <h1 className="text-5xl font-black text-white mb-8 relative z-10 drop-shadow-md">{team.name}</h1>
+          
           <div className="space-y-6 mb-10 relative z-10">
             <div className="bg-black/30 p-4 rounded-lg backdrop-blur-sm border border-white/10">
-              <p className="text-xs text-green-300 mb-1 uppercase">
-                Pasa al pizarrón
-              </p>
-              <p className="text-3xl font-serif text-yellow-300">
-                {describer.name}
-              </p>
+              <p className="text-xs text-green-300 mb-1 uppercase">Pasa al pizarrón</p>
+              <p className="text-3xl font-serif text-yellow-300">{describer.name}</p>
             </div>
-
+            
             <div className="flex justify-center text-white/50">
-              <ArrowRight className="rotate-90" />
+                <ArrowRight className="rotate-90" />
             </div>
 
             <div className="bg-black/30 p-4 rounded-lg backdrop-blur-sm border border-white/10">
-              <p className="text-xs text-green-300 mb-1 uppercase">
-                Intenta adivinar
-              </p>
+              <p className="text-xs text-green-300 mb-1 uppercase">Intenta adivinar</p>
               <p className="text-3xl font-serif text-white">{guesser}</p>
             </div>
           </div>
 
-          <button
+          <button 
             onClick={startRound}
             className="w-full bg-white text-green-900 font-black py-4 rounded-lg text-xl hover:bg-gray-100 transition-colors shadow-lg relative z-10"
           >
             ¡LISTOS!
           </button>
         </div>
-        <p className="mt-8 text-gray-400 text-sm font-mono">
-          Papelitos en la bolsa: {deck.length}
-        </p>
+        <p className="mt-8 text-gray-400 text-sm font-mono">Papelitos en la bolsa: {deck.length}</p>
       </div>
     );
   }
@@ -800,74 +721,51 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gray-900 flex flex-col p-4 text-white font-sans overflow-hidden">
         <div className="flex justify-between items-center mb-6 z-20">
-          <div
-            className={`flex items-center gap-2 text-6xl font-mono font-bold ${
-              timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'
-            }`}
-          >
-            <Timer size={48} /> {timeLeft}
-          </div>
-          <div className="text-white font-mono bg-white/10 px-4 py-2 rounded-lg">
-            Puntos: {turnScore}
-          </div>
+            <div className={`flex items-center gap-2 text-6xl font-mono font-bold ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
+                <Timer size={48} /> {timeLeft}
+            </div>
+            <div className="text-white font-mono bg-white/10 px-4 py-2 rounded-lg">
+                Puntos: {turnScore}
+            </div>
         </div>
 
         <div className="flex-1 flex flex-col justify-center items-center relative perspective-1000">
-          <div
-            onClick={() => isCardFolded && setIsCardFolded(false)}
-            className={`transition-all duration-500 cursor-pointer relative ${
-              isCardFolded
-                ? 'w-32 h-32 hover:scale-105'
-                : 'w-full max-w-sm h-64'
-            }`}
-          >
-            {isCardFolded ? (
-              <div className="w-full h-full bg-white shadow-2xl rounded-sm transform rotate-3 flex items-center justify-center border border-gray-300 group">
-                <div className="absolute top-0 right-0 border-t-[30px] border-r-[30px] border-t-gray-100 border-r-gray-300 shadow-sm"></div>
-                <div className="absolute bottom-0 left-0 w-full h-full bg-gradient-to-br from-transparent to-gray-200/50 pointer-events-none"></div>
-                <span className="text-gray-400 text-sm font-bold uppercase tracking-widest group-hover:text-blue-500 transition-colors">
-                  Tócame
-                </span>
-              </div>
-            ) : (
-              <div className="w-full h-full bg-white shadow-2xl transform rotate-1 animate-unfold origin-center relative overflow-hidden">
-                <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-red-400/50"></div>
-                <div
-                  className="w-full h-full p-8 flex items-center justify-center text-center"
-                  style={NOTEBOOK_LINES_STYLE}
-                >
-                  <h2 className="text-5xl font-serif text-blue-900 leading-relaxed font-bold transform -rotate-1">
-                    {currentCard ? currentCard.text : '...'}
-                  </h2>
-                </div>
-                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/crinkle-paper.png')] pointer-events-none"></div>
-              </div>
-            )}
-          </div>
+            <div 
+                onClick={() => isCardFolded && setIsCardFolded(false)}
+                className={`transition-all duration-500 cursor-pointer relative ${isCardFolded ? 'w-32 h-32 hover:scale-105' : 'w-full max-w-sm h-64'}`}
+            >
+                {isCardFolded ? (
+                    <div className="w-full h-full bg-white shadow-2xl rounded-sm transform rotate-3 flex items-center justify-center border border-gray-300 group">
+                        <div className="absolute top-0 right-0 border-t-[30px] border-r-[30px] border-t-gray-100 border-r-gray-300 shadow-sm"></div>
+                        <div className="absolute bottom-0 left-0 w-full h-full bg-gradient-to-br from-transparent to-gray-200/50 pointer-events-none"></div>
+                        <span className="text-gray-400 text-sm font-bold uppercase tracking-widest group-hover:text-blue-500 transition-colors">Tócame</span>
+                    </div>
+                ) : (
+                    <div className="w-full h-full bg-white shadow-2xl transform rotate-1 animate-unfold origin-center relative overflow-hidden">
+                        <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-red-400/50"></div>
+                        <div className="w-full h-full p-8 flex items-center justify-center text-center" style={NOTEBOOK_LINES_STYLE}>
+                            <h2 className="text-5xl font-serif text-blue-900 leading-relaxed font-bold transform -rotate-1">
+                                {currentCard ? currentCard.text : "..."}
+                            </h2>
+                        </div>
+                         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/crinkle-paper.png')] pointer-events-none"></div>
+                    </div>
+                )}
+            </div>
 
-          <p
-            className={`mt-8 text-gray-400 text-sm uppercase tracking-widest transition-opacity ${
-              isCardFolded ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            Toca el papel para abrirlo
-          </p>
+            <p className={`mt-8 text-gray-400 text-sm uppercase tracking-widest transition-opacity ${isCardFolded ? 'opacity-100' : 'opacity-0'}`}>
+                Toca el papel para abrirlo
+            </p>
         </div>
 
-        <div
-          className={`mt-8 mb-4 transition-all duration-500 ${
-            isCardFolded
-              ? 'opacity-50 pointer-events-none translate-y-10'
-              : 'opacity-100 translate-y-0'
-          }`}
-        >
-          <button
-            onClick={handleCorrectGuess}
-            className="w-full bg-green-500 active:bg-green-600 border-b-8 border-green-700 active:border-b-0 active:translate-y-2 text-white font-black text-2xl py-6 rounded-2xl shadow-xl transition-all flex justify-center items-center gap-3"
-          >
-            <CheckCircle size={32} />
-            ¡ADIVINADO!
-          </button>
+        <div className={`mt-8 mb-4 transition-all duration-500 ${isCardFolded ? 'opacity-50 pointer-events-none translate-y-10' : 'opacity-100 translate-y-0'}`}>
+            <button 
+                onClick={handleCorrectGuess}
+                className="w-full bg-green-500 active:bg-green-600 border-b-8 border-green-700 active:border-b-0 active:translate-y-2 text-white font-black text-2xl py-6 rounded-2xl shadow-xl transition-all flex justify-center items-center gap-3"
+            >
+                <CheckCircle size={32} />
+                ¡ADIVINADO!
+            </button>
         </div>
       </div>
     );
@@ -877,30 +775,21 @@ export default function App() {
   if (phase === 'round_summary') {
     return (
       <div className="min-h-screen bg-green-900 flex flex-col justify-center items-center p-6 text-center text-white">
-        <h1 className="text-6xl font-black mb-2 animate-pulse text-red-400">
-          ¡RING!
-        </h1>
-        <p className="text-green-200 text-xl mb-8">
-          Se acabó el tiempo del recreo.
-        </p>
+        <h1 className="text-6xl font-black mb-2 animate-pulse text-red-400">¡RING!</h1>
+        <p className="text-green-200 text-xl mb-8">Se acabó el tiempo del recreo.</p>
 
         <div className="bg-white/10 backdrop-blur-md p-8 rounded-xl w-full max-w-sm mb-8 border border-white/20">
-          <p className="text-green-300 uppercase text-sm font-bold">Aciertos</p>
-          <p className="text-7xl font-serif text-yellow-400 my-4 font-bold">
-            +{turnScore}
-          </p>
-          <div className="h-px bg-white/20 my-4 w-full"></div>
-          <p className="text-lg">
-            Total {getCurrentTeam().name}:{' '}
-            <span className="font-bold text-2xl">{getCurrentTeam().score}</span>
-          </p>
+            <p className="text-green-300 uppercase text-sm font-bold">Aciertos</p>
+            <p className="text-7xl font-serif text-yellow-400 my-4 font-bold">+{turnScore}</p>
+            <div className="h-px bg-white/20 my-4 w-full"></div>
+            <p className="text-lg">Total {getCurrentTeam().name}: <span className="font-bold text-2xl">{getCurrentTeam().score}</span></p>
         </div>
 
-        <button
-          onClick={nextTeamTurn}
-          className="bg-white text-green-900 font-bold py-4 px-8 rounded-full text-lg hover:bg-gray-200 transition-colors flex items-center gap-2 shadow-lg"
+        <button 
+            onClick={nextTeamTurn}
+            className="bg-white text-green-900 font-bold py-4 px-8 rounded-full text-lg hover:bg-gray-200 transition-colors flex items-center gap-2 shadow-lg"
         >
-          Siguiente Equipo <ArrowRight size={20} />
+            Siguiente Equipo <ArrowRight size={20}/>
         </button>
       </div>
     );
@@ -910,64 +799,43 @@ export default function App() {
   if (phase === 'game_over') {
     const sortedTeams = [...teams].sort((a, b) => b.score - a.score);
     const winner = sortedTeams[0];
-    const isTie =
-      sortedTeams.length > 1 && sortedTeams[0].score === sortedTeams[1].score;
+    const isTie = sortedTeams.length > 1 && sortedTeams[0].score === sortedTeams[1].score;
 
     return (
       <div className="min-h-screen bg-gray-900 flex flex-col items-center p-6 text-white text-center font-sans">
-        <Trophy
-          size={80}
-          className="text-yellow-400 mb-6 animate-bounce drop-shadow-lg"
-        />
-        <h1 className="text-4xl font-black mb-2 text-yellow-400">
-          DIPLOMA DE HONOR
-        </h1>
-
+        <Trophy size={80} className="text-yellow-400 mb-6 animate-bounce drop-shadow-lg" />
+        <h1 className="text-4xl font-black mb-2 text-yellow-400">DIPLOMA DE HONOR</h1>
+        
         {isTie ? (
-          <div className="bg-white text-gray-900 p-8 rounded-lg shadow-xl w-full max-w-md mb-8 transform rotate-1">
-            <h2 className="text-3xl font-serif font-bold mb-2">
-              ¡Empate Técnico!
-            </h2>
-          </div>
+             <div className="bg-white text-gray-900 p-8 rounded-lg shadow-xl w-full max-w-md mb-8 transform rotate-1">
+                <h2 className="text-3xl font-serif font-bold mb-2">¡Empate Técnico!</h2>
+             </div>
         ) : (
-          <div className="bg-white text-gray-900 p-8 rounded-sm shadow-2xl w-full max-w-md mb-8 border-4 border-double border-yellow-500 relative mt-4">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-32 h-8 bg-red-500/80 shadow-sm flex items-center justify-center text-white text-xs font-bold tracking-widest uppercase">
-              Ganadores
+            <div className="bg-white text-gray-900 p-8 rounded-sm shadow-2xl w-full max-w-md mb-8 border-4 border-double border-yellow-500 relative mt-4">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-32 h-8 bg-red-500/80 shadow-sm flex items-center justify-center text-white text-xs font-bold tracking-widest uppercase">Ganadores</div>
+                
+                <h2 className="text-4xl font-serif font-bold mt-4 text-blue-900">{winner.name}</h2>
+                <p className="text-2xl font-bold text-gray-500 mt-2">{winner.score} Puntos</p>
             </div>
-
-            <h2 className="text-4xl font-serif font-bold mt-4 text-blue-900">
-              {winner.name}
-            </h2>
-            <p className="text-2xl font-bold text-gray-500 mt-2">
-              {winner.score} Puntos
-            </p>
-          </div>
         )}
 
         <div className="w-full max-w-md space-y-3 mb-10">
-          {sortedTeams.map((t, idx) => (
-            <div
-              key={t.id}
-              className="flex justify-between items-center bg-white/10 p-4 rounded-lg border border-white/5"
-            >
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-gray-500 font-bold text-xl">
-                  #{idx + 1}
-                </span>
-                <span className="font-bold text-lg">{t.name}</span>
-              </div>
-              <span className="font-bold text-2xl text-yellow-400 font-mono">
-                {t.score}
-              </span>
-            </div>
-          ))}
+            {sortedTeams.map((t, idx) => (
+                <div key={t.id} className="flex justify-between items-center bg-white/10 p-4 rounded-lg border border-white/5">
+                    <div className="flex items-center gap-3">
+                        <span className="font-mono text-gray-500 font-bold text-xl">#{idx + 1}</span>
+                        <span className="font-bold text-lg">{t.name}</span>
+                    </div>
+                    <span className="font-bold text-2xl text-yellow-400 font-mono">{t.score}</span>
+                </div>
+            ))}
         </div>
 
-        <button
-          onClick={resetGame}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors uppercase tracking-widest text-sm font-bold"
+        <button 
+            onClick={resetGame}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors uppercase tracking-widest text-sm font-bold"
         >
-          <RotateCcw size={16} /> Volver a clases (Reiniciar)
+            <RotateCcw size={16} /> Volver a clases (Reiniciar)
         </button>
       </div>
     );
