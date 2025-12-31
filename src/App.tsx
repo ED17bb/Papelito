@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Timer, Play, CheckCircle, RotateCcw, Trophy, ArrowRight, X, ChevronRight, Shuffle, MousePointer2, ArrowLeft } from 'lucide-react';
+import { Users, Timer, Play, CheckCircle, RotateCcw, Trophy, ArrowRight, X, ChevronRight, Shuffle, MousePointer2, ArrowLeft, Maximize2 } from 'lucide-react';
 
 /* CONSTANTS & CONFIG */
 const ROUND_DURATION = 60; // seconds
 
-/* TYPES (Definiciones para TypeScript) */
+/* TYPES */
 interface Player {
   id: number;
   name: string;
@@ -91,17 +91,14 @@ export default function App() {
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      // Tipo de onda diente de sierra para que suene como alarma/buzzer
       osc.type = 'sawtooth';
       
       const now = ctx.currentTime;
-      const duration = 3.0; // Duración aumentada a 3 segundos
+      const duration = 3.0; 
 
-      // Frecuencia: empieza agudo (800Hz) y cae dramáticamente a grave (50Hz)
       osc.frequency.setValueAtTime(800, now);
       osc.frequency.exponentialRampToValueAtTime(50, now + duration);
 
-      // Volumen: empieza medio y se desvanece al final
       gain.gain.setValueAtTime(0.3, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
@@ -112,9 +109,24 @@ export default function App() {
     }
   };
 
+  // Función para forzar pantalla completa
+  const enterFullScreen = () => {
+    const doc = window.document as any;
+    const docEl = doc.documentElement as any;
+
+    const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+    
+    if (requestFullScreen) {
+        requestFullScreen.call(docEl).catch((err: any) => console.log("Error al entrar en fullscreen", err));
+    }
+  };
+
   // --- ACTIONS ---
 
   const handleNextInputStep = () => {
+    // Intentamos entrar en pantalla completa en la primera interacción
+    enterFullScreen();
+
     if (papelitoStep === 0) {
       if (!tempPlayerName.trim()) return;
       setPapelitoStep(1);
@@ -171,13 +183,11 @@ export default function App() {
   };
 
   const generateRandomTeams = () => {
-    // 1. Barajamos totalmente a los jugadores
     const shuffledPlayers = shuffleArray([...players]);
     
     const generatedTeams: Team[] = [];
     const numTeams = Math.ceil(players.length / 2);
 
-    // 2. Inicializamos los equipos vacíos
     for (let i = 0; i < numTeams; i++) {
       generatedTeams.push({
         id: i,
@@ -188,13 +198,8 @@ export default function App() {
       });
     }
 
-    // 3. Distribución secuencial (llenar huecos) para mayor aleatoriedad visual
-    // En lugar de repartir 1, 2, 3, 1, 2, 3... (Round Robin)
-    // Vamos a llenar Equipo 1 con los primeros 2 del shuffle, Equipo 2 con los siguientes 2, etc.
     let playerIdx = 0;
     for (let i = 0; i < numTeams; i++) {
-        // Cada equipo recibe 2 jugadores, excepto quizás el último si es impar
-        // Pero como shuffledPlayers ya está mezclado, el orden es aleatorio.
         if (playerIdx < shuffledPlayers.length) {
             generatedTeams[i].members.push(shuffledPlayers[playerIdx]);
             playerIdx++;
@@ -205,7 +210,6 @@ export default function App() {
         }
     }
     
-    // Si quedó alguien suelto (impar), lo ponemos en el último equipo (trío) o donde corresponda
     while(playerIdx < shuffledPlayers.length) {
         generatedTeams[generatedTeams.length - 1].members.push(shuffledPlayers[playerIdx]);
         playerIdx++;
@@ -314,6 +318,7 @@ export default function App() {
   };
 
   const startRound = () => {
+    enterFullScreen(); // Re-asegurar fullscreen al empezar ronda
     setTimeLeft(ROUND_DURATION);
     setTurnScore(0);
     setIsPlaying(true);
@@ -432,7 +437,10 @@ export default function App() {
       <div className="min-h-screen w-full bg-green-900 flex flex-col items-center font-sans p-4 relative overflow-x-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
         
-        {/* <img src="/logo.png" className="w-24 h-24 mb-2 object-contain relative z-10" /> */}
+        {/* Botón manual para pantalla completa por si acaso */}
+        <button onClick={enterFullScreen} className="absolute top-2 right-2 text-green-300 opacity-50 hover:opacity-100 z-50">
+            <Maximize2 size={20} />
+        </button>
 
         <h1 className="text-4xl font-black mb-2 text-white/90 tracking-tighter mt-4 font-mono relative z-10">Papelito</h1>
         <p className="text-green-200 mb-6 font-handwriting relative z-10">¡Escribe clarito para que te entiendan!</p>
