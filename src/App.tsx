@@ -410,13 +410,16 @@ export default function App() {
   /* VISTA 1: WIZARD DE REGISTRO */
   if (phase === 'setup_players') {
     return (
-      <div className="min-h-screen bg-green-900 flex flex-col items-center font-sans p-4 relative overflow-hidden">
+      <div className="min-h-screen w-full bg-green-900 flex flex-col items-center font-sans p-4 relative overflow-x-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
         
-        <h1 className="text-4xl font-black mb-2 text-white/90 tracking-tighter mt-4 font-mono">Papelito</h1>
-        <p className="text-green-200 mb-6 font-handwriting">¡Escribe clarito para que te entiendan!</p>
+        {/* Aquí puedes descomentar esta línea si subiste un logo a /public */}
+        {/* <img src="/logo.png" className="w-24 h-24 mb-2 object-contain relative z-10" /> */}
 
-        <div className="w-full max-w-md bg-yellow-600 rounded-lg p-1 shadow-2xl rotate-1">
+        <h1 className="text-4xl font-black mb-2 text-white/90 tracking-tighter mt-4 font-mono relative z-10">Papelito</h1>
+        <p className="text-green-200 mb-6 font-handwriting relative z-10">¡Escribe clarito para que te entiendan!</p>
+
+        <div className="w-full max-w-md bg-yellow-600 rounded-lg p-1 shadow-2xl rotate-1 relative z-10">
            <div className="bg-white rounded-md p-6 min-h-[400px] flex flex-col relative shadow-inner">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-4 flex gap-4">
                   <div className="w-4 h-8 bg-gray-400 rounded-full shadow-md"></div>
@@ -482,7 +485,7 @@ export default function App() {
            </div>
         </div>
 
-        <div className="mt-8 w-full max-w-md bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+        <div className="mt-8 w-full max-w-md bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 relative z-10">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-white font-bold flex items-center gap-2"><Users size={18}/> Lista de jugadores ({players.length})</h3>
           </div>
@@ -512,10 +515,10 @@ export default function App() {
   /* VISTA INTERMEDIA: ELEGIR MODO DE EQUIPOS */
   if (phase === 'choose_team_mode') {
     return (
-        <div className="min-h-screen bg-green-900 p-6 flex flex-col justify-center items-center text-white font-sans relative">
+        <div className="min-h-screen w-full bg-green-900 p-6 flex flex-col justify-center items-center text-white font-sans relative overflow-x-hidden">
             <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
             
-            <h2 className="text-3xl font-black mb-12 text-center">¿Cómo armamos los equipos?</h2>
+            <h2 className="text-3xl font-black mb-12 text-center relative z-10">¿Cómo armamos los equipos?</h2>
 
             <div className="w-full max-w-sm space-y-6 z-10">
                 <button 
@@ -550,7 +553,7 @@ export default function App() {
   /* VISTA: SETUP MANUAL DE EQUIPOS (DRAG & DROP SIMULADO PARA MOVIL) */
   if (phase === 'manual_team_setup') {
     return (
-        <div className="min-h-screen bg-green-900 p-4 flex flex-col items-center font-sans relative overflow-y-auto">
+        <div className="min-h-screen w-full bg-green-900 p-4 flex flex-col items-center font-sans relative overflow-x-hidden overflow-y-auto">
             <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
             
             <div className="w-full max-w-lg z-10">
@@ -638,10 +641,10 @@ export default function App() {
   /* VISTA 2: CONFIRMAR NOMBRES DE EQUIPOS */
   if (phase === 'setup_teams') {
     return (
-      <div className="min-h-screen bg-green-900 p-6 flex flex-col items-center text-white font-sans relative">
+      <div className="min-h-screen w-full bg-green-900 p-6 flex flex-col items-center text-white font-sans relative overflow-x-hidden">
          <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
-        <h2 className="text-3xl font-black mb-6 text-yellow-400 underline decoration-wavy decoration-white/30">Equipos Listos</h2>
-        <p className="text-green-200 mb-4 text-sm">Puedes cambiar los nombres si quieres</p>
+        <h2 className="text-3xl font-black mb-6 text-yellow-400 underline decoration-wavy decoration-white/30 relative z-10">Equipos Listos</h2>
+        <p className="text-green-200 mb-4 text-sm relative z-10">Puedes cambiar los nombres si quieres</p>
         
         <div className="w-full max-w-md space-y-6 mb-8 z-10">
           {teams.map((team) => (
@@ -681,7 +684,7 @@ export default function App() {
     const guesser = getGuesser();
 
     return (
-      <div className="min-h-screen bg-gray-800 flex flex-col justify-center items-center p-6 text-center text-white font-sans">
+      <div className="min-h-screen w-full bg-gray-800 flex flex-col justify-center items-center p-6 text-center text-white font-sans overflow-x-hidden">
         <div className="bg-green-900 p-8 rounded-xl shadow-2xl max-w-md w-full border-4 border-wood-800 relative overflow-hidden">
             <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle,white_1px,transparent_1px)] bg-[length:20px_20px]"></div>
           
@@ -719,7 +722,7 @@ export default function App() {
   /* VISTA 4: JUGANDO */
   if (phase === 'playing') {
     return (
-      <div className="min-h-screen bg-gray-900 flex flex-col p-4 text-white font-sans overflow-hidden">
+      <div className="min-h-screen w-full bg-gray-900 flex flex-col p-4 text-white font-sans overflow-hidden">
         <div className="flex justify-between items-center mb-6 z-20">
             <div className={`flex items-center gap-2 text-6xl font-mono font-bold ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
                 <Timer size={48} /> {timeLeft}
@@ -774,7 +777,7 @@ export default function App() {
   /* VISTA 5: RESUMEN RONDA */
   if (phase === 'round_summary') {
     return (
-      <div className="min-h-screen bg-green-900 flex flex-col justify-center items-center p-6 text-center text-white">
+      <div className="min-h-screen w-full bg-green-900 flex flex-col justify-center items-center p-6 text-center text-white overflow-x-hidden">
         <h1 className="text-6xl font-black mb-2 animate-pulse text-red-400">¡RING!</h1>
         <p className="text-green-200 text-xl mb-8">Se acabó el tiempo del recreo.</p>
 
@@ -802,7 +805,7 @@ export default function App() {
     const isTie = sortedTeams.length > 1 && sortedTeams[0].score === sortedTeams[1].score;
 
     return (
-      <div className="min-h-screen bg-gray-900 flex flex-col items-center p-6 text-white text-center font-sans">
+      <div className="min-h-screen w-full bg-gray-900 flex flex-col items-center p-6 text-white text-center font-sans overflow-x-hidden">
         <Trophy size={80} className="text-yellow-400 mb-6 animate-bounce drop-shadow-lg" />
         <h1 className="text-4xl font-black mb-2 text-yellow-400">DIPLOMA DE HONOR</h1>
         
