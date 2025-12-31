@@ -91,15 +91,22 @@ export default function App() {
       osc.connect(gain);
       gain.connect(ctx.destination);
 
+      // Tipo de onda diente de sierra para que suene como alarma/buzzer
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.5);
+      
+      const now = ctx.currentTime;
+      const duration = 3.0; // Duración aumentada a 3 segundos
 
-      gain.gain.setValueAtTime(0.5, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      // Frecuencia: empieza agudo (800Hz) y cae dramáticamente a grave (50Hz)
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(50, now + duration);
+
+      // Volumen: empieza medio y se desvanece al final
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
       osc.start();
-      osc.stop(ctx.currentTime + 0.6);
+      osc.stop(now + duration + 0.1);
     } catch (e) {
       console.error("Audio error", e);
     }
@@ -164,10 +171,13 @@ export default function App() {
   };
 
   const generateRandomTeams = () => {
+    // 1. Barajamos totalmente a los jugadores
     const shuffledPlayers = shuffleArray([...players]);
+    
     const generatedTeams: Team[] = [];
     const numTeams = Math.ceil(players.length / 2);
 
+    // 2. Inicializamos los equipos vacíos
     for (let i = 0; i < numTeams; i++) {
       generatedTeams.push({
         id: i,
@@ -178,10 +188,28 @@ export default function App() {
       });
     }
 
-    shuffledPlayers.forEach((player, index) => {
-      const teamIndex = index % numTeams;
-      generatedTeams[teamIndex].members.push(player);
-    });
+    // 3. Distribución secuencial (llenar huecos) para mayor aleatoriedad visual
+    // En lugar de repartir 1, 2, 3, 1, 2, 3... (Round Robin)
+    // Vamos a llenar Equipo 1 con los primeros 2 del shuffle, Equipo 2 con los siguientes 2, etc.
+    let playerIdx = 0;
+    for (let i = 0; i < numTeams; i++) {
+        // Cada equipo recibe 2 jugadores, excepto quizás el último si es impar
+        // Pero como shuffledPlayers ya está mezclado, el orden es aleatorio.
+        if (playerIdx < shuffledPlayers.length) {
+            generatedTeams[i].members.push(shuffledPlayers[playerIdx]);
+            playerIdx++;
+        }
+        if (playerIdx < shuffledPlayers.length) {
+             generatedTeams[i].members.push(shuffledPlayers[playerIdx]);
+             playerIdx++;
+        }
+    }
+    
+    // Si quedó alguien suelto (impar), lo ponemos en el último equipo (trío) o donde corresponda
+    while(playerIdx < shuffledPlayers.length) {
+        generatedTeams[generatedTeams.length - 1].members.push(shuffledPlayers[playerIdx]);
+        playerIdx++;
+    }
 
     setTeams(generatedTeams);
     setPhase('setup_teams');
@@ -712,8 +740,8 @@ export default function App() {
   /* VISTA 4: JUGANDO */
   if (phase === 'playing') {
     return (
-      <div className="min-h-screen w-full max-w-full bg-gray-900 flex flex-col p-4 text-white font-sans overflow-x-hidden">
-        <div className="flex justify-between items-center mb-6 z-20">
+      <div className="min-h-screen w-screen bg-gray-900 flex flex-col text-white font-sans overflow-hidden">
+        <div className="flex justify-between items-center p-4 z-20">
             <div className={`flex items-center gap-2 text-5xl md:text-6xl font-mono font-bold ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
                 <Timer size={40} /> {timeLeft}
             </div>
@@ -722,10 +750,10 @@ export default function App() {
             </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center items-center relative perspective-1000 w-full">
+        <div className="flex-1 flex flex-col justify-center items-center relative w-full">
             <div 
                 onClick={() => isCardFolded && setIsCardFolded(false)}
-                className={`transition-all duration-500 cursor-pointer relative mx-auto ${isCardFolded ? 'w-32 h-32 hover:scale-105' : 'w-full max-w-lg h-72'}`}
+                className={`transition-all duration-500 cursor-pointer relative mx-auto ${isCardFolded ? 'w-32 h-32 hover:scale-105' : 'w-[90%] max-w-lg h-72'}`}
             >
                 {isCardFolded ? (
                     <div className="w-full h-full bg-white shadow-2xl rounded-sm transform rotate-3 flex items-center justify-center border border-gray-300 group">
@@ -751,7 +779,7 @@ export default function App() {
             </p>
         </div>
 
-        <div className={`mt-8 mb-4 transition-all duration-500 w-full flex justify-center ${isCardFolded ? 'opacity-50 pointer-events-none translate-y-10' : 'opacity-100 translate-y-0'}`}>
+        <div className={`p-4 transition-all duration-500 w-full flex justify-center ${isCardFolded ? 'opacity-50 pointer-events-none translate-y-10' : 'opacity-100 translate-y-0'}`}>
             <button 
                 onClick={handleCorrectGuess}
                 className="w-full max-w-lg bg-green-500 active:bg-green-600 border-b-8 border-green-700 active:border-b-0 active:translate-y-2 text-white font-black text-2xl py-6 rounded-2xl shadow-xl transition-all flex justify-center items-center gap-3"
