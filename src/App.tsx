@@ -68,7 +68,6 @@ export default function App() {
 
   // --- HELPER FUNCTIONS ---
 
-  // Generic shuffle function to fix "any" type error
   const shuffleArray = <T,>(array: T[]): T[] => {
     let currentIndex = array.length, randomIndex;
     while (currentIndex !== 0) {
@@ -81,7 +80,6 @@ export default function App() {
 
   const playAlarmSound = () => {
     try {
-      // Fix for TypeScript not knowing about webkitAudioContext
       const win = window as any;
       const AudioContext = win.AudioContext || win.webkitAudioContext;
       if (!AudioContext) return;
@@ -149,7 +147,7 @@ export default function App() {
 
   const removePlayer = (id: number) => {
     const playerToRemove = players.find(p => p.id === id);
-    if (!playerToRemove) return; // TypeScript safety check
+    if (!playerToRemove) return;
     
     setPlayers(players.filter(p => p.id !== id));
     setAllPapelitos(allPapelitos.filter(p => p.author !== playerToRemove.name));
@@ -207,7 +205,6 @@ export default function App() {
     setPhase('manual_team_setup');
   };
 
-  // Manual Drag & Drop (Tap & Move) Logic
   const handlePlayerTap = (player: Player) => {
     if (selectedPlayerId === player.id) {
         setSelectedPlayerId(null); 
@@ -219,12 +216,9 @@ export default function App() {
   const assignPlayerToTeam = (teamId: number) => {
     if (!selectedPlayerId) return;
 
-    // Find player in unassigned
     const player = unassignedPlayers.find(p => p.id === selectedPlayerId);
     if (player) {
-        // Remove from unassigned
         setUnassignedPlayers(unassignedPlayers.filter(p => p.id !== selectedPlayerId));
-        // Add to team
         setManualTeams(manualTeams.map(t => {
             if (t.id === teamId) {
                 return { ...t, members: [...t.members, player] };
@@ -233,7 +227,6 @@ export default function App() {
         }));
         setSelectedPlayerId(null);
     } else {
-        // Logic to move between teams
         let playerFoundInTeam: Player | undefined;
         let sourceTeamId: number | undefined;
 
@@ -246,14 +239,12 @@ export default function App() {
         });
 
         if (playerFoundInTeam && sourceTeamId !== undefined && sourceTeamId !== teamId) {
-            // Remove from source
             const newTeams = manualTeams.map(t => {
                 if (t.id === sourceTeamId) {
                     return { ...t, members: t.members.filter(p => p.id !== selectedPlayerId) };
                 }
                 return t;
             });
-            // Add to target
             const finalTeams = newTeams.map(t => {
                 if (t.id === teamId) {
                     return { ...t, members: [...t.members, playerFoundInTeam!] };
@@ -413,7 +404,6 @@ export default function App() {
       <div className="min-h-screen w-full bg-green-900 flex flex-col items-center font-sans p-4 relative overflow-x-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/black-chalkboard.png')]"></div>
         
-        {/* Aquí puedes descomentar esta línea si subiste un logo a /public */}
         {/* <img src="/logo.png" className="w-24 h-24 mb-2 object-contain relative z-10" /> */}
 
         <h1 className="text-4xl font-black mb-2 text-white/90 tracking-tighter mt-4 font-mono relative z-10">Papelito</h1>
@@ -550,7 +540,7 @@ export default function App() {
     );
   }
 
-  /* VISTA: SETUP MANUAL DE EQUIPOS (DRAG & DROP SIMULADO PARA MOVIL) */
+  /* VISTA: SETUP MANUAL DE EQUIPOS */
   if (phase === 'manual_team_setup') {
     return (
         <div className="min-h-screen w-full bg-green-900 p-4 flex flex-col items-center font-sans relative overflow-x-hidden overflow-y-auto">
@@ -722,20 +712,20 @@ export default function App() {
   /* VISTA 4: JUGANDO */
   if (phase === 'playing') {
     return (
-      <div className="min-h-screen w-full bg-gray-900 flex flex-col p-4 text-white font-sans overflow-hidden">
+      <div className="min-h-screen w-full max-w-full bg-gray-900 flex flex-col p-4 text-white font-sans overflow-x-hidden">
         <div className="flex justify-between items-center mb-6 z-20">
-            <div className={`flex items-center gap-2 text-6xl font-mono font-bold ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
-                <Timer size={48} /> {timeLeft}
+            <div className={`flex items-center gap-2 text-5xl md:text-6xl font-mono font-bold ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
+                <Timer size={40} /> {timeLeft}
             </div>
             <div className="text-white font-mono bg-white/10 px-4 py-2 rounded-lg">
                 Puntos: {turnScore}
             </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center items-center relative perspective-1000">
+        <div className="flex-1 flex flex-col justify-center items-center relative perspective-1000 w-full">
             <div 
                 onClick={() => isCardFolded && setIsCardFolded(false)}
-                className={`transition-all duration-500 cursor-pointer relative ${isCardFolded ? 'w-32 h-32 hover:scale-105' : 'w-full max-w-sm h-64'}`}
+                className={`transition-all duration-500 cursor-pointer relative mx-auto ${isCardFolded ? 'w-32 h-32 hover:scale-105' : 'w-full max-w-lg h-72'}`}
             >
                 {isCardFolded ? (
                     <div className="w-full h-full bg-white shadow-2xl rounded-sm transform rotate-3 flex items-center justify-center border border-gray-300 group">
@@ -744,10 +734,10 @@ export default function App() {
                         <span className="text-gray-400 text-sm font-bold uppercase tracking-widest group-hover:text-blue-500 transition-colors">Tócame</span>
                     </div>
                 ) : (
-                    <div className="w-full h-full bg-white shadow-2xl transform rotate-1 animate-unfold origin-center relative overflow-hidden">
+                    <div className="w-full h-full bg-white shadow-2xl transform animate-unfold origin-center relative overflow-hidden rounded-sm">
                         <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-red-400/50"></div>
                         <div className="w-full h-full p-8 flex items-center justify-center text-center" style={NOTEBOOK_LINES_STYLE}>
-                            <h2 className="text-5xl font-serif text-blue-900 leading-relaxed font-bold transform -rotate-1">
+                            <h2 className="text-5xl font-serif text-blue-900 leading-relaxed font-bold">
                                 {currentCard ? currentCard.text : "..."}
                             </h2>
                         </div>
@@ -761,10 +751,10 @@ export default function App() {
             </p>
         </div>
 
-        <div className={`mt-8 mb-4 transition-all duration-500 ${isCardFolded ? 'opacity-50 pointer-events-none translate-y-10' : 'opacity-100 translate-y-0'}`}>
+        <div className={`mt-8 mb-4 transition-all duration-500 w-full flex justify-center ${isCardFolded ? 'opacity-50 pointer-events-none translate-y-10' : 'opacity-100 translate-y-0'}`}>
             <button 
                 onClick={handleCorrectGuess}
-                className="w-full bg-green-500 active:bg-green-600 border-b-8 border-green-700 active:border-b-0 active:translate-y-2 text-white font-black text-2xl py-6 rounded-2xl shadow-xl transition-all flex justify-center items-center gap-3"
+                className="w-full max-w-lg bg-green-500 active:bg-green-600 border-b-8 border-green-700 active:border-b-0 active:translate-y-2 text-white font-black text-2xl py-6 rounded-2xl shadow-xl transition-all flex justify-center items-center gap-3"
             >
                 <CheckCircle size={32} />
                 ¡ADIVINADO!
